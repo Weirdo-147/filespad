@@ -1,22 +1,41 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 relative">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 z-0 opacity-10">
+        <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <pattern id="pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M0 0h40v40H0z" fill="none"/>
+                <circle cx="20" cy="20" r="2" fill="currentColor"/>
+            </pattern>
+            <rect width="100%" height="100%" fill="url(#pattern)"/>
+        </svg>
+    </div>
+
     <!-- Navigation Bar -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
+    <nav class="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex">
                     <a href="/" class="flex items-center">
-                        <span class="text-xl font-bold text-blue-600">FilesPad</span>
+                        <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">FilesPad</span>
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-sm text-gray-500">Access Code:</span>
-                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded font-mono">{{ access_code }}</span>
-                    <a href="/" class="text-gray-500 hover:text-gray-700">
+                    <span class="px-3 py-1 bg-blue-100/80 backdrop-blur-sm text-blue-800 rounded-lg font-mono animate-pulse">{{ access_code }}</span>
+                    {% if is_owner %}
+                    <button onclick="showSettingsModal()" class="text-gray-500 hover:text-gray-700 transition-colors duration-200" title="Settings">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                    <a href="/" class="text-gray-500 hover:text-gray-700 transition-colors duration-200">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                         </svg>
                     </a>
                 </div>
@@ -25,56 +44,61 @@
     </nav>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 relative z-10">
         <!-- Action Buttons -->
         <div class="mb-6 flex justify-between items-center">
             <div class="flex space-x-4">
                 {% if is_owner %}
                 <a href="{{ url_for('upload_console', session_code=access_code) }}" 
-                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200">
                     <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
                     Upload New File
                 </a>
                 {% endif %}
                 {% if files %}
                 <button onclick="downloadAllFiles()" 
-                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200">
                     <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
                     Download All
                 </button>
                 {% endif %}
             </div>
-            <div class="text-sm text-gray-500">
+            <div class="text-sm text-gray-500 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-lg shadow-sm">
                 Files expire in 3 days
             </div>
         </div>
 
         <!-- Files List -->
         {% if files %}
-        <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <div class="bg-white/80 backdrop-blur-sm shadow-lg rounded-xl overflow-hidden border border-gray-100">
             <ul class="divide-y divide-gray-200">
                 {% for file in files %}
-                <li id="file-{{ file.id }}">
-                    <div class="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                <li id="file-{{ file.id }}" class="transform hover:scale-[1.01] transition-all duration-200">
+                    <div class="px-4 py-4 sm:px-6 hover:bg-gray-50/50">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-3">
                                 <div class="flex-shrink-0">
-                                    <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
+                                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <div class="flex items-center space-x-3">
                                         <span class="text-sm font-medium text-gray-900 truncate max-w-md">
-                                            {{ file.filename or 'Unnamed File' }}
+                                            {{ file.original_filename or file.filename or 'Unnamed File' }}
                                         </span>
                                         {% if file.password %}
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                            Password Protected
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                            </svg>
+                                            Protected
                                         </span>
                                         {% endif %}
                                     </div>
@@ -94,18 +118,18 @@
                             </div>
                             <div class="flex items-center space-x-2">
                                 <a href="{{ url_for('download_file', access_code=access_code, file_id=file.id) }}" 
-                                   class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded text-blue-600 hover:text-blue-800 focus:outline-none"
+                                   class="inline-flex items-center p-2 border border-transparent text-sm font-medium rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:outline-none transition-colors duration-200"
                                    title="Download {{ file.filename }}">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                     </svg>
                                 </a>
                                 {% if is_owner %}
                                 <button onclick="deleteFile('{{ file.id }}')"
-                                        class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded text-red-600 hover:text-red-800 focus:outline-none"
+                                        class="inline-flex items-center p-2 border border-transparent text-sm font-medium rounded-lg text-red-600 hover:text-red-800 hover:bg-red-50 focus:outline-none transition-colors duration-200"
                                         title="Delete {{ file.filename }}">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                     </svg>
                                 </button>
                                 {% endif %}
@@ -116,37 +140,21 @@
                 {% endfor %}
             </ul>
         </div>
-
-        <!-- Delete Confirmation Modal -->
-        <div id="deleteModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 hidden flex items-center justify-center">
-            <div class="bg-white rounded-lg p-6 max-w-sm mx-auto">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Confirm Deletion</h3>
-                <p class="text-sm text-gray-500 mb-4">Are you sure you want to delete this file? This action cannot be undone.</p>
-                <div class="flex justify-end space-x-4">
-                    <button onclick="hideDeleteModal()" 
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                        Cancel
-                    </button>
-                    <button id="confirmDelete" 
-                            class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                        Delete
-                    </button>
-                </div>
-            </div>
-        </div>
         {% else %}
-        <div class="text-center py-12 bg-white shadow sm:rounded-lg">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No files</h3>
+        <div class="text-center py-12 bg-white/80 backdrop-blur-sm shadow-lg rounded-xl border border-gray-100">
+            <div class="w-24 h-24 mx-auto bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
+                <svg class="h-12 w-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <h3 class="mt-4 text-sm font-medium text-gray-900">No files</h3>
             <p class="mt-1 text-sm text-gray-500">Get started by uploading a file.</p>
             {% if is_owner %}
             <div class="mt-6">
                 <a href="{{ url_for('upload_console', session_code=access_code) }}" 
-                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200">
                     <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
                     Upload File
                 </a>
@@ -154,6 +162,102 @@
             {% endif %}
         </div>
         {% endif %}
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="settingsContent">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Settings</h3>
+            <button onclick="hideSettingsModal()" class="text-gray-400 hover:text-gray-500 transition-colors duration-200">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="space-y-6">
+            <!-- Access Code Protection -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-900 mb-2">Access Code Protection</h4>
+                <div class="flex items-center justify-between bg-gray-50 p-4 rounded-xl">
+                    <div>
+                        <p class="text-sm text-gray-700">Lock access code with password</p>
+                        <p class="text-xs text-gray-500 mt-1">Prevent others from accessing your files without a password</p>
+                        {% if session.password %}
+                        <p class="text-xs text-green-600 mt-1 flex items-center">
+                            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Currently protected
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center">
+                        <label class="flex items-center cursor-pointer">
+                            <div class="relative">
+                                <input type="checkbox" id="codeLockToggle" class="sr-only" 
+                                       onchange="toggleCodeLock(this)" 
+                                       data-has-password="{% if session.password %}true{% else %}false{% endif %}"
+                                       {% if session.password %}checked{% endif %}>
+                                <div class="w-10 h-6 bg-gray-300 rounded-full shadow-inner"></div>
+                                <div class="dot absolute w-4 h-4 bg-white rounded-full shadow -left-1 -top-1 transition"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div id="passwordSection" class="mt-4 {% if not session.password %}hidden{% endif %}">
+                    {% if session.password %}
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm text-gray-600">Change password or remove protection</span>
+                        <button onclick="removePassword()" 
+                                class="text-sm text-red-600 hover:text-red-700 transition-colors duration-200">
+                            Remove Password
+                        </button>
+                    </div>
+                    {% endif %}
+                    <input type="password" id="codeLockPassword" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                           placeholder="{% if session.password %}Enter new password{% else %}Enter password{% endif %}">
+                    <button onclick="saveCodeLock()" 
+                            class="mt-2 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200">
+                        {% if session.password %}Update Password{% else %}Save Password{% endif %}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div>
+                <h4 class="text-sm font-medium text-gray-900 mb-2">Statistics</h4>
+                <div class="bg-gray-50 p-4 rounded-xl space-y-2">
+                    <div class="flex justify-between items-center p-2 hover:bg-white/50 rounded-lg transition-colors duration-200">
+                        <span class="text-sm text-gray-600">Total Files</span>
+                        <span class="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-lg">{{ files|length }}</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 hover:bg-white/50 rounded-lg transition-colors duration-200">
+                        <span class="text-sm text-gray-600">Storage Used</span>
+                        <span class="text-sm font-medium bg-green-100 text-green-800 px-2 py-1 rounded-lg" id="storageUsed">Calculating...</span>
+                    </div>
+                    <div class="flex justify-between items-center p-2 hover:bg-white/50 rounded-lg transition-colors duration-200">
+                        <span class="text-sm text-gray-600">Days Active</span>
+                        <span class="text-sm font-medium bg-purple-100 text-purple-800 px-2 py-1 rounded-lg">{{ ((now - session_created_at).total_seconds() / 86400)|round|int }} days</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div>
+                <h4 class="text-sm font-medium text-red-600 mb-2">Danger Zone</h4>
+                <div class="border-2 border-red-100 rounded-xl p-4">
+                    <p class="text-sm text-gray-700 mb-3">Delete all files and this access code</p>
+                    <button onclick="confirmDeleteAll()" 
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transform hover:scale-[1.02] transition-all duration-200">
+                        Delete Everything
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -226,5 +330,154 @@ function downloadAllFiles() {
         }, index * 1000);
     });
 }
+
+function showSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    const content = document.getElementById('settingsContent');
+    modal.classList.remove('hidden');
+    // Add small delay to trigger animation
+    setTimeout(() => {
+        content.classList.remove('scale-95', 'opacity-0');
+        content.classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+function hideSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    const content = document.getElementById('settingsContent');
+    content.classList.remove('scale-100', 'opacity-100');
+    content.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+}
+
+function toggleCodeLock(checkbox) {
+    const passwordSection = document.getElementById('passwordSection');
+    passwordSection.classList.toggle('hidden', !checkbox.checked);
+    
+    const hasPassword = checkbox.dataset.hasPassword === 'true';
+    if (!checkbox.checked && hasPassword) {
+        // If unchecking and password exists, remove the password
+        removePassword();
+    }
+}
+
+function removePassword() {
+    if (confirm('Are you sure you want to remove password protection?')) {
+        fetch(`/settings/{{ access_code }}/lock`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Password protection removed successfully');
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error removing password protection');
+        });
+    }
+}
+
+function saveCodeLock() {
+    const password = document.getElementById('codeLockPassword').value;
+    if (!password) {
+        alert('Please enter a password');
+        return;
+    }
+
+    fetch(`/settings/{{ access_code }}/lock`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Password protection enabled successfully');
+            hideSettingsModal();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving password protection');
+    });
+}
+
+function confirmDeleteAll() {
+    if (confirm('Are you sure you want to delete all files and this access code? This action cannot be undone.')) {
+        fetch(`/settings/{{ access_code }}/delete-all`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.href = '/';
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting everything');
+        });
+    }
+}
+
+// Calculate storage used
+fetch(`/settings/{{ access_code }}/storage-info`)
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('storageUsed').textContent = data.storage_used;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('storageUsed').textContent = 'Error calculating';
+    });
+
+// Close modal when clicking outside
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideSettingsModal();
+    }
+});
+
+// Add styles for toggle switch with smoother animation
+const style = document.createElement('style');
+style.textContent = `
+    .dot {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    input:checked ~ .dot {
+        transform: translateX(100%);
+        background-color: #2563eb;
+    }
+    input:checked + div {
+        background-color: #93c5fd;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %} 

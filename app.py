@@ -14,6 +14,7 @@ import json
 from dotenv import load_dotenv
 from io import BytesIO
 import uuid
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Load environment variables
 load_dotenv()
@@ -133,23 +134,33 @@ def sync_session_with_cloudinary(session_code):
             try:
                 # Extract file_id from the public_id (remove folder prefix)
                 public_id = resource['public_id']
-                file_id = public_id.split('/')[-1] if '/' in public_id else public_id
+                file_parts = public_id.split('/')[-1].split('_', 1)  # Split on first underscore
+                file_id = file_parts[0]
                 
                 # Try multiple ways to get the original filename
                 original_filename = None
+                filename = None
                 
                 # First try to get from context metadata
                 if 'context' in resource and 'custom' in resource['context']:
-                    original_filename = resource['context']['custom'].get('original_filename')
+                    original_filename = resource['context']['custom'].get('original_name')
+                    filename = resource['context']['custom'].get('original_filename')
+                
+                # Then try to extract from public_id
+                if not filename and len(file_parts) > 1:
+                    filename = file_parts[1]
                 
                 # Then try other metadata fields
-                if not original_filename:
-                    original_filename = (
+                if not filename:
+                    filename = (
                         resource.get('metadata', {}).get('original_filename') or
                         resource.get('original_filename') or
                         os.path.basename(resource.get('secure_url', '')) or
                         file_id
                     )
+                
+                if not original_filename:
+                    original_filename = filename
                 
                 # Create timestamps
                 now = datetime.utcnow()
@@ -163,7 +174,8 @@ def sync_session_with_cloudinary(session_code):
                 app.logger.info(f"Expiry date: {expiry_date}")
                 
                 SESSIONS[session_code]['files'][file_id] = {
-                    'filename': original_filename,
+                    'filename': filename,
+                    'original_filename': original_filename,
                     'url': resource['secure_url'],
                     'password': None,  # We can't recover passwords for existing files
                     'upload_date': upload_date,
@@ -182,6 +194,44 @@ def sync_session_with_cloudinary(session_code):
     except Exception as e:
         app.logger.error(f"Error syncing with Cloudinary: {str(e)}")
         return False
+
+def calculate_session_storage(session_code):
+    """Calculate total storage used by a session"""
+    try:
+        total_size = 0
+        resources = cloudinary.api.resources(
+            resource_type="raw",
+            type="upload",
+            prefix=f"{session_code}/",
+            max_results=500
+        )
+        
+        for resource in resources.get('resources', []):
+            total_size += resource.get('bytes', 0)
+        
+        # Convert to human readable format
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if total_size < 1024:
+                return f"{total_size:.1f} {unit}"
+            total_size /= 1024
+        return f"{total_size:.1f} TB"
+    except Exception as e:
+        app.logger.error(f"Error calculating storage: {str(e)}")
+        return "Unknown"
+
+def verify_session_password(session_code, password=None):
+    """Verify session password if it exists"""
+    if session_code not in SESSIONS:
+        return False
+        
+    session = SESSIONS[session_code]
+    if 'password' not in session or not session['password']:
+        return True  # No password protection
+        
+    if not password:
+        return False
+        
+    return check_password_hash(session['password'], password)
 
 @app.route('/')
 def index():
@@ -260,6 +310,13 @@ def dashboard(access_code):
         return redirect(url_for('index'))
     
     session = SESSIONS[access_code]
+    
+    # Check if password protected and not owner
+    if not request.args.get('is_owner') and 'password' in session and session['password']:
+        return render_template('password_verify.html', 
+                             access_code=access_code,
+                             return_url=url_for('dashboard', access_code=access_code, is_owner=True))
+    
     current_time = datetime.utcnow()
     
     # Prepare files data for the template
@@ -288,6 +345,8 @@ def dashboard(access_code):
                          access_code=access_code,
                          files=files,
                          now=current_time,
+                         session_created_at=session['created_at'],
+                         session=session,  # Pass the entire session data
                          is_owner=True)  # In production, implement proper ownership check
 
 @app.route('/upload/<session_code>')
@@ -312,8 +371,9 @@ def upload_file(session_code):
     # Generate unique file ID
     file_id = str(uuid.uuid4())
     
-    # Secure the filename
-    filename = secure_filename(file.filename)
+    # Secure the filename while preserving extension
+    original_filename = file.filename
+    filename = secure_filename(original_filename)
     
     # Optional password protection
     password = request.form.get('password')
@@ -326,16 +386,20 @@ def upload_file(session_code):
         upload_result = cloudinary.uploader.upload(
             encrypted_data,
             resource_type="raw",
-            public_id=file_id,
+            public_id=f"{file_id}_{filename}",  # Include filename in public_id
             folder=session_code,
             use_filename=True,
-            context={'original_filename': filename},  # Store original filename in context
-            tags=[filename]  # Add filename as a tag for easier retrieval
+            context={
+                'original_filename': filename,
+                'original_name': original_filename  # Store both secured and original filename
+            },
+            tags=[filename, os.path.splitext(filename)[1][1:] if os.path.splitext(filename)[1] else '']  # Add extension as tag
         )
 
         # Store file metadata
         SESSIONS[session_code]['files'][file_id] = {
             'filename': filename,
+            'original_filename': original_filename,
             'url': upload_result['secure_url'],
             'password': password,
             'upload_date': datetime.utcnow(),
@@ -351,6 +415,19 @@ def upload_file(session_code):
         app.logger.error(f"Upload error: {str(e)}")
         return {'error': 'Error uploading file'}, 500
 
+@app.route('/verify-access', methods=['POST'])
+def verify_access():
+    access_code = request.form.get('access_code')
+    password = request.form.get('password')
+    
+    if not access_code:
+        return jsonify({'error': 'Access code is required'}), 400
+        
+    if not verify_session_password(access_code, password):
+        return jsonify({'error': 'Incorrect password'}), 401
+        
+    return jsonify({'status': 'success'})
+
 @app.route('/download/<access_code>/<file_id>', methods=['GET', 'POST'])
 def download_file(access_code, file_id):
     if access_code not in SESSIONS:
@@ -358,6 +435,23 @@ def download_file(access_code, file_id):
         return redirect(url_for('index'))
 
     session = SESSIONS[access_code]
+    
+    # Check session password protection first
+    if not request.args.get('is_owner') and 'password' in session and session['password']:
+        if request.method == 'GET':
+            return render_template('password_verify.html', 
+                                access_code=access_code,
+                                file_id=file_id,
+                                return_url=url_for('download_file', access_code=access_code, file_id=file_id, is_owner=True))
+        
+        password = request.form.get('password')
+        if not verify_session_password(access_code, password):
+            flash('Incorrect password')
+            return render_template('password_verify.html', 
+                                access_code=access_code,
+                                file_id=file_id,
+                                return_url=url_for('download_file', access_code=access_code, file_id=file_id, is_owner=True))
+
     if file_id not in session['files']:
         flash('File not found')
         return redirect(url_for('dashboard', access_code=access_code))
@@ -370,7 +464,7 @@ def download_file(access_code, file_id):
         flash('File has expired')
         return redirect(url_for('dashboard', access_code=access_code))
 
-    # Handle password protection
+    # Handle individual file password protection
     if file_info['password']:
         if request.method == 'GET':
             return render_template('password.html', 
@@ -384,9 +478,10 @@ def download_file(access_code, file_id):
                                 file_id=file_id)
 
     try:
-        # Get the file from Cloudinary using the full path
+        # Get the file from Cloudinary using the full path including filename
+        filename = file_info['filename']
         resource = cloudinary.api.resource(
-            f"{access_code}/{file_id}",  # Use full path
+            f"{access_code}/{file_id}_{filename}",  # Include both ID and filename
             resource_type="raw"
         )
         
@@ -406,8 +501,8 @@ def download_file(access_code, file_id):
         # Create a BytesIO object for the decrypted data
         file_data = BytesIO(decrypted_data)
         
-        # Ensure we have a valid filename
-        download_name = file_info['filename'] or f"download_{file_id}"
+        # Use the original filename for download if available
+        download_name = file_info.get('original_filename') or file_info['filename'] or f"download_{file_id}"
         
         app.logger.info(f"Sending file: {download_name}")
         
@@ -490,6 +585,57 @@ scheduler.add_job(
     trigger='interval',
     hours=24
 )
+
+@app.route('/settings/<access_code>/storage-info')
+def get_storage_info(access_code):
+    if access_code not in SESSIONS:
+        return jsonify({'error': 'Invalid access code'}), 404
+    
+    storage_used = calculate_session_storage(access_code)
+    return jsonify({'storage_used': storage_used})
+
+@app.route('/settings/<access_code>/lock', methods=['POST'])
+def set_code_lock(access_code):
+    if access_code not in SESSIONS:
+        return jsonify({'error': 'Invalid access code'}), 404
+    
+    data = request.get_json()
+    password = data.get('password')
+    
+    if not password:
+        return jsonify({'error': 'Password is required'}), 400
+    
+    try:
+        # Store the password hash instead of plain text
+        SESSIONS[access_code]['password'] = generate_password_hash(password)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        app.logger.error(f"Error setting password: {str(e)}")
+        return jsonify({'error': 'Error setting password'}), 500
+
+@app.route('/settings/<access_code>/delete-all', methods=['POST'])
+def delete_all(access_code):
+    if access_code not in SESSIONS:
+        return jsonify({'error': 'Invalid access code'}), 404
+    
+    try:
+        # Delete all files from Cloudinary
+        delete_session_folder(access_code)
+        # Remove session
+        del SESSIONS[access_code]
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        app.logger.error(f"Error deleting everything: {str(e)}")
+        return jsonify({'error': 'Error deleting everything'}), 500
+
+@app.route('/settings/<access_code>/lock', methods=['DELETE'])
+def remove_password(access_code):
+    if access_code not in SESSIONS:
+        return jsonify({'status': 'error', 'error': 'Invalid access code'}), 404
+
+    # Remove the password from the session
+    SESSIONS[access_code]['password'] = None
+    return jsonify({'status': 'success'})
 
 if __name__ == '__main__':
     scheduler.init_app(app)
