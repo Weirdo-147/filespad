@@ -1,0 +1,10 @@
+Flask==3.0.2
+python-dotenv==1.0.1
+cloudinary==1.39.0
+Flask-APScheduler==1.13.1
+cryptography==42.0.5
+python-magic==0.4.27
+Flask-WTF==1.2.1
+Werkzeug==3.0.1
+python-dateutil==2.9.0
+requests==2.31.0 

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <div class="text-center">
+            <svg class="mx-auto h-12 w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <h2 class="mt-4 text-2xl font-bold text-gray-800">File Uploaded Successfully!</h2>
+            
+            <div class="mt-4 text-gray-600">
+                <p>File: <span class="font-medium">{{ filename }}</span></p>
+            </div>
+            
+            <div class="mt-6">
+                <p class="text-gray-600 mb-4">Your file access code is:</p>
+                <div class="bg-gray-100 p-4 rounded-lg">
+                    <code class="text-xl font-mono text-blue-600">{{ access_code }}</code>
+                </div>
+                
+                <button onclick="copyAccessCode()"
+                        class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Copy Access Code
+                </button>
+            </div>
+
+            <div class="mt-8 text-gray-600">
+                <p>Share this code with anyone you want to access the file.</p>
+                <p class="mt-2">The file will be automatically deleted after 3 days.</p>
+            </div>
+
+            <div class="mt-8 space-x-4">
+                <a href="{{ url_for('upload_console', session_code=session_code) }}" 
+                   class="text-blue-500 hover:text-blue-700">
+                    Upload another file
+                </a>
+                <span class="text-gray-300">|</span>
+                <a href="/" class="text-blue-500 hover:text-blue-700">
+                    Go to home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyAccessCode() {
+    const accessCode = "{{ access_code }}";
+    navigator.clipboard.writeText(accessCode).then(function() {
+        alert("Access code copied to clipboard!");
+    }).catch(function(err) {
+        console.error('Failed to copy text: ', err);
+    });
+}
+</script>
+{% endblock %} 

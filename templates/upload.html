@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Upload Console</h2>
+            <div class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded">
+                Access Code: <span class="font-mono">{{ session_code }}</span>
+            </div>
+        </div>
+        
+        <form action="{{ url_for('upload_file', session_code=session_code) }}" class="dropzone" id="upload-form">
+            <div class="fallback">
+                <input name="file" type="file" />
+            </div>
+        </form>
+
+        <div class="mt-6 flex justify-end">
+            <button type="button" 
+                    onclick="clearAllFiles()"
+                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 mr-4">
+                Clear All Files
+            </button>
+        </div>
+
+        <div class="mt-6 space-y-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="password">
+                    Password Protection (Optional)
+                </label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                       id="password" type="password" placeholder="Enter password to protect your file">
+            </div>
+
+            <button id="submit-button"
+                    class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    type="button">
+                Upload File
+            </button>
+        </div>
+
+        <div class="mt-4 text-sm text-gray-600">
+            <ul class="list-disc list-inside">
+                <li>Files are automatically deleted after 3 days</li>
+                <li>Maximum file size: 100 MB</li>
+                <li>Password protection is optional</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+Dropzone.options.uploadForm = {
+    autoProcessQueue: false,
+    maxFilesize: 100,
+    parallelUploads: 10,  // Allow multiple files to be uploaded in parallel
+    uploadMultiple: false,  // Process one file at a time but keep going
+    addRemoveLinks: true,
+    dictRemoveFile: "Remove",
+    dictCancelUpload: "Cancel",
+    dictDefaultMessage: "Drop files here or click to upload",
+    init: function() {
+        var submitButton = document.getElementById("submit-button");
+        var myDropzone = this;
+        var totalFiles = 0;
+        var uploadedFiles = 0;
+
+        submitButton.addEventListener("click", function() {
+            if (myDropzone.getQueuedFiles().length === 0) {
+                alert("Please add at least one file to upload.");
+                return;
+            }
+            
+            const password = document.getElementById("password").value;
+            if (password) {
+                myDropzone.options.params = {
+                    password: password
+                };
+            }
+
+            totalFiles = myDropzone.getQueuedFiles().length;
+            uploadedFiles = 0;
+            myDropzone.processQueue();
+        });
+
+        this.on("success", function(file, response) {
+            if (response.status === 'success') {
+                uploadedFiles++;
+                
+                // Only redirect after all files are uploaded
+                if (uploadedFiles === totalFiles) {
+                    window.location.href = "/dashboard/" + response.access_code;
+                } else {
+                    // Process next file
+                    myDropzone.processQueue();
+                }
+            } else {
+                alert("Error uploading file: " + response.error);
+                this.removeFile(file);
+                // Try to continue with next file
+                myDropzone.processQueue();
+            }
+        });
+
+        this.on("error", function(file, errorMessage) {
+            alert("Error: " + errorMessage);
+            this.removeFile(file);
+            uploadedFiles++;
+            
+            // If this was the last file (even with error), redirect
+            if (uploadedFiles === totalFiles) {
+                window.location.href = "/dashboard/" + response.access_code;
+            } else {
+                // Try to continue with next file
+                myDropzone.processQueue();
+            }
+        });
+
+        // Add custom styling to the dropzone
+        this.on("addedfile", function(file) {
+            // Add custom styling to the file preview
+            file.previewElement.classList.add("bg-gray-50", "rounded", "p-2", "mb-2");
+            
+            // Add file size information
+            var fileSize = document.createElement("div");
+            fileSize.className = "text-xs text-gray-500 mt-1";
+            fileSize.textContent = "Size: " + formatFileSize(file.size);
+            file.previewElement.appendChild(fileSize);
+        });
+
+        // Update progress for all files
+        this.on("totaluploadprogress", function(progress) {
+            const progressText = Math.round(progress) + "%";
+            document.getElementById("submit-button").textContent = 
+                progress < 100 ? `Uploading... ${progressText}` : "Upload File";
+        });
+    }
+};
+
+function clearAllFiles() {
+    var dropzone = Dropzone.forElement("#upload-form");
+    dropzone.removeAllFiles(true);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Add custom styling to the dropzone container
+document.addEventListener('DOMContentLoaded', function() {
+    const dropzone = document.querySelector('.dropzone');
+    dropzone.classList.add(
+        'border-2',
+        'border-dashed',
+        'border-gray-300',
+        'rounded-lg',
+        'p-6',
+        'text-center',
+        'hover:border-blue-500',
+        'transition-colors',
+        'duration-200'
+    );
+});
+</script>
+
+<style>
+.dropzone {
+    min-height: 150px;
+    border: 2px dashed #e2e8f0;
+    background: white;
+    padding: 20px;
+    border-radius: 0.5rem;
+}
+
+.dropzone .dz-preview {
+    margin: 10px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 120px;
+}
+
+.dropzone .dz-preview .dz-image {
+    border-radius: 0.375rem;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.dropzone .dz-preview .dz-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.dropzone .dz-preview .dz-details {
+    text-align: center;
+    margin-top: 0.5rem;
+    width: 100%;
+}
+
+.dropzone .dz-preview .dz-filename {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: center;
+}
+
+.dropzone .dz-preview .dz-size {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-align: center;
+}
+
+.dropzone .dz-preview .dz-remove {
+    color: #ef4444;
+    text-decoration: none;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    display: block;
+    text-align: center;
+}
+
+.dropzone .dz-preview .dz-remove:hover {
+    text-decoration: underline;
+}
+
+.dropzone .dz-preview .dz-error-message {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    text-align: center;
+    width: 100%;
+}
+
+.dropzone .dz-preview .dz-progress {
+    opacity: 1;
+    z-index: 1000;
+    pointer-events: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 6px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.dropzone .dz-preview .dz-progress .dz-upload {
+    background: #3b82f6;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 0;
+    transition: width 300ms ease-in-out;
+}
+
+.dropzone .dz-preview.dz-success .dz-progress {
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+}
+
+.dropzone .dz-message {
+    text-align: center;
+    padding: 2rem;
+    font-size: 1rem;
+    color: #6b7280;
+    border: 2px dashed #e5e7eb;
+    border-radius: 0.5rem;
+    background: #f9fafb;
+    margin: 1rem 0;
+}
+
+.dropzone .dz-message .dz-button {
+    background: none;
+    color: inherit;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    outline: inherit;
+}
+
+/* Preview grid layout */
+.dropzone .dz-preview-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .dropzone .dz-preview {
+        width: 100px;
+    }
+    
+    .dropzone .dz-preview .dz-image {
+        width: 100px;
+        height: 100px;
+    }
+}
+</style>
+{% endblock %} 
